@@ -2,6 +2,7 @@ package me.jin.account;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.jin.Application;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,17 +16,18 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 
 /**
  * Created by nayoung on 2016. 9. 23..
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-//@SpringApplicationConfiguration(classes = Application.class)
 @SpringBootTest(classes = Application.class)
-//@ContextConfiguration(loader = SpringApplicationContextLoader.class, classes = )
 @WebAppConfiguration
 @Transactional //rollback
 public class AccountControllerTest {
@@ -35,18 +37,51 @@ public class AccountControllerTest {
     @Autowired
     ObjectMapper objectMapper;
 
+    MockMvc mockMvn;
+
+    @Before
+    public void setUp() {
+        mockMvn = MockMvcBuilders.webAppContextSetup(wac).build();
+    }
+
     @Test
     public void createAccount() throws Exception {
-        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
-
         AccountDto.Create creatDto = new AccountDto.Create();
         creatDto.setUsername("soolbe");
         creatDto.setPassword("password");
 
-        ResultActions result = mockMvc.perform(post("/accounts").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(creatDto)));
+        ResultActions result = mockMvn.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(creatDto)));
 
         result.andDo(print());
         result.andExpect(status().isCreated());
+        //Body = {"id":1,"username":"soolbe","fullName":null,"joined":1475241861485,"updated":1475241861485}
+        result.andExpect(jsonPath("$.username", is("soolbe")));
+
+        result = mockMvn.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(creatDto)));
+
+        result.andDo(print());
+        result.andExpect(status().isBadRequest());
+        result.andExpect(jsonPath("$.code", is("duplicated.username.exception")));
+    }
+
+    @Test
+    public void createAccount_BadRequest() throws Exception {
+        AccountDto.Create creatDto = new AccountDto.Create();
+        creatDto.setUsername("  ");
+        creatDto.setPassword("1234");
+
+        ResultActions result = mockMvn.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(creatDto)));
+
+        result.andDo(print());
+        result.andExpect(status().isBadRequest());
+
+        result.andExpect(jsonPath("$.code", is("bad.request")));
     }
 
 }
