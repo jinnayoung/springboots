@@ -8,6 +8,7 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
@@ -18,6 +19,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -36,6 +38,9 @@ public class AccountControllerTest {
 
     @Autowired
     ObjectMapper objectMapper;
+
+    @Autowired
+    AccountService service;
 
     MockMvc mockMvn;
 
@@ -69,6 +74,7 @@ public class AccountControllerTest {
     }
 
     @Test
+    @Rollback(false)
     public void createAccount_BadRequest() throws Exception {
         AccountDto.Create creatDto = new AccountDto.Create();
         creatDto.setUsername("  ");
@@ -82,6 +88,29 @@ public class AccountControllerTest {
         result.andExpect(status().isBadRequest());
 
         result.andExpect(jsonPath("$.code", is("bad.request")));
+    }
+
+    // TODO: 2016. 10. 2. getAccount()
+    @Test
+    public void getAccount() throws Exception {
+        AccountDto.Create createDto = new AccountDto.Create();
+        createDto.setUsername("soolbe");
+        createDto.setPassword("password");
+        service.createAccount(createDto);
+
+        ResultActions result = mockMvn.perform(get("/accounts/"));
+
+        //Body = {"content":[{"id":1,"username":"soolbe","fullName":null,"joined":1475400922119,"updated":1475400922119}]
+        // ,"last":true
+        // ,"totalElements":1
+        // ,"totalPages":1
+        // ,"size":20
+        // ,"number":0
+        // ,"sort":null
+        // ,"first":true
+        // ,"numberOfElements":1}
+        result.andDo(print());
+        result.andExpect(status().isOk());
     }
 
 }
